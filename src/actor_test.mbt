@@ -181,3 +181,38 @@ async test "registry lookup and message routing" {
   
   inspect(count.val, content="100")
 }
+
+async test "scheduler delayed and interval messages" {
+  let delay_count = Counter::{ val: 0 }
+  let interval_count = Counter::{ val: 0 }
+  
+  let delay_worker = Actor::new(
+    handle=fn(_ctx, _msg : Unit) {
+      delay_count.val = 10
+    }
+  )
+  
+  let interval_worker = Actor::new(
+    handle=fn(_ctx, _msg : Unit) {
+      interval_count.val += 1
+    }
+  )
+  
+  run_system(async fn(sys) {
+    let delay_addr = sys.spawn(delay_worker)
+    let interval_addr = sys.spawn(interval_worker)
+    let scheduler = sys.spawn(scheduler_actor(sys))
+    
+    let _ = scheduler.try_send(SendAfter(30, delay_addr, ()))
+    let _ = scheduler.try_send(SendInterval(20, interval_addr, ()))
+    
+    @async.sleep(55)
+    
+    scheduler.close()
+    delay_addr.close()
+    interval_addr.close()
+  })
+  
+  inspect(delay_count.val, content="10")
+  inspect(interval_count.val, content="2")
+}
