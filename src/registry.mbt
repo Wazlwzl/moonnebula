@@ -1,16 +1,23 @@
-/// A Registry allows named lookups for Actors of a specific Message type.
-pub struct Registry[Msg] {
-  actors : Map[String, Addr[Msg]]
+pub(all) enum RegistryMsg[Msg] {
+  Register(String, Addr[Msg])
+  Lookup(String, Addr[Addr[Msg]?])
 }
 
-pub fn[Msg] Registry::new() -> Registry[Msg] {
-  { actors: Map([]) }
-}
-
-pub fn[Msg] Registry::register(self : Registry[Msg], name : String, addr : Addr[Msg]) -> Unit {
-  self.actors.set(name, addr)
-}
-
-pub fn[Msg] Registry::get(self : Registry[Msg], name : String) -> Addr[Msg]? {
-  self.actors.get(name)
+/// Creates a Registry Actor that manages actor registration and lookups safely.
+pub fn[Msg] registry_actor() -> Actor[RegistryMsg[Msg]] {
+  let actors : Map[String, Addr[Msg]] = Map([])
+  Actor::new(
+    handle=fn(_ctx, msg) {
+      match msg {
+        Register(name, addr) => {
+          actors.set(name, addr)
+        }
+        Lookup(name, reply_to) => {
+          let target = actors.get(name)
+          let _ = reply_to.try_send(target)
+          ()
+        }
+      }
+    }
+  )
 }

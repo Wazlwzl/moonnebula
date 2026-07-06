@@ -138,3 +138,46 @@ async test "supervisor child restart on crash" {
   
   inspect(restart_count.val, content="2")
 }
+
+async test "registry lookup and message routing" {
+  let count = Counter::{ val: 0 }
+  
+  let worker = Actor::new(
+    handle=fn(_ctx, _msg : Unit) {
+      count.val = 100
+    }
+  )
+  
+  run_system(async fn(sys) {
+    let worker_addr = sys.spawn(worker)
+    let registry = sys.spawn(registry_actor())
+    
+    // Register
+    let _ = registry.try_send(Register("my_worker", worker_addr))
+    
+    // Client actor that does the lookup
+    let client = Actor::new(
+      handle=fn(_ctx, reply : Addr[Unit]?) {
+        match reply {
+          Some(addr) => {
+            let _ = addr.try_send(())
+            ()
+          }
+          None => ()
+        }
+      }
+    )
+    let client_addr = sys.spawn(client)
+    
+    // Lookup
+    let _ = registry.try_send(Lookup("my_worker", client_addr))
+    
+    @async.sleep(50)
+    
+    worker_addr.close()
+    registry.close()
+    client_addr.close()
+  })
+  
+  inspect(count.val, content="100")
+}
