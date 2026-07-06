@@ -1,25 +1,33 @@
+///|
 pub(all) enum SupervisionStrategy {
   OneForOne
   OneForAll
 }
 
+///|
 pub(all) enum SupervisorMsg {
   ChildCrashed(String)
 }
 
+///|
 pub struct ChildSpec {
   id : String
   spawn : (System, Addr[SupervisorMsg]) -> Unit
 }
 
-pub fn ChildSpec::new(id : String, spawn : (System, Addr[SupervisorMsg]) -> Unit) -> ChildSpec {
+///|
+pub fn ChildSpec::new(
+  id : String,
+  spawn : (System, Addr[SupervisorMsg]) -> Unit,
+) -> ChildSpec {
   { id, spawn }
 }
 
+///|
 pub fn supervisor_actor(
   system : System,
   children : Array[ChildSpec],
-  strategy : SupervisionStrategy
+  strategy : SupervisionStrategy,
 ) -> Actor[SupervisorMsg] {
   Actor::new(
     started=fn(ctx) {
@@ -30,9 +38,9 @@ pub fn supervisor_actor(
     },
     handle=fn(ctx, msg) {
       match msg {
-        ChildCrashed(id) => {
+        ChildCrashed(id) =>
           match strategy {
-            OneForOne => {
+            OneForOne =>
               for child in children {
                 if child.id == id {
                   let self_addr = ctx.addr()
@@ -40,7 +48,6 @@ pub fn supervisor_actor(
                   break
                 }
               }
-            }
             OneForAll => {
               let self_addr = ctx.addr()
               for child in children {
@@ -48,8 +55,7 @@ pub fn supervisor_actor(
               }
             }
           }
-        }
       }
-    }
+    },
   )
 }

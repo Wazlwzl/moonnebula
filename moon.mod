@@ -1,0 +1,17 @@
+name = "moonnebula"
+
+version = "0.1.0"
+
+import {
+  "moonbitlang/async@0.19.4",
+}
+
+readme = "README.md"
+
+repository = "https://github.com/moonnebula/moonnebula"
+
+license = "Apache-2.0"
+
+keywords = [ "actor", "concurrency", "async" ]
+
+description = "A high-performance Actor concurrency framework for MoonBit"
