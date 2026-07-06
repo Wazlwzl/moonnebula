@@ -10,6 +10,14 @@ pub async fn[Msg] Sender::send(self : Sender[Msg], msg : Msg) -> Unit {
   self.queue.put(msg)
 }
 
+pub fn[Msg] Sender::try_send(self : Sender[Msg], msg : Msg) -> Bool {
+  try {
+    self.queue.try_put(msg)
+  } catch {
+    _ => false
+  }
+}
+
 pub fn[Msg] Sender::close(self : Sender[Msg]) -> Unit {
   self.queue.close()
 }

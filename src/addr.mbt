@@ -10,6 +10,10 @@ pub async fn[Msg] Addr::send(self : Addr[Msg], msg : Msg) -> Unit {
   self.sender.send(msg)
 }
 
+pub fn[Msg] Addr::try_send(self : Addr[Msg], msg : Msg) -> Bool {
+  self.sender.try_send(msg)
+}
+
 pub fn[Msg] Addr::close(self : Addr[Msg]) -> Unit {
   self.sender.close()
 }
