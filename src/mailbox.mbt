@@ -10,6 +10,10 @@ pub async fn[Msg] Sender::send(self : Sender[Msg], msg : Msg) -> Unit {
   self.queue.put(msg)
 }
 
+pub fn[Msg] Sender::close(self : Sender[Msg]) -> Unit {
+  self.queue.close()
+}
+
 pub struct Receiver[Msg] {
   queue: @aqueue.Queue[Msg]
 }

@@ -20,10 +20,14 @@ pub fn[Msg] System::spawn(self : System, actor : Actor[Msg]) -> Addr[Msg] {
     no_wait=true,
     allow_failure=true,
     async fn() {
-      (actor.started)(ctx)
-      while true {
-        let msg = receiver.recv()
-        (actor.handle)(ctx, msg)
+      try {
+        (actor.started)(ctx)
+        while true {
+          let msg = receiver.recv()
+          (actor.handle)(ctx, msg)
+        }
+      } catch {
+        _ => ()
       }
       (actor.stopped)(ctx)
     },

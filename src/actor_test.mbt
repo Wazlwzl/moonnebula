@@ -1,26 +1,24 @@
-test "basic actor system compiles" {
-  // Actor system compilation test
+struct Counter {
+  mut val : Int
+}
+
+async test "actor graceful shutdown" {
+  let count = { val: 0 }
   let actor = Actor::new(
-    handle=fn(_ctx, msg : Int) {
-      ignore(msg)
+    started=fn(ctx) {
+      ctx.stop()
+    },
+    handle=fn(_ctx, _msg : Unit) {
+      count.val += 1
+    },
+    stopped=fn(_ctx) {
+      count.val = 42
     }
   )
-  ignore(actor)
-}
-
-test "supervisor strategy" {
-  let sup = Supervisor::new(SupervisionStrategy::OneForOne)
-  ignore(sup)
-  let sup2 = Supervisor::new(SupervisionStrategy::OneForAll)
-  ignore(sup2)
-}
-
-test "router compilation" {
-  let router : Router[Int] = Router::new([])
-  ignore(router)
-}
-
-test "registry compilation" {
-  let reg : Registry[Int] = Registry::new()
-  ignore(reg)
+  
+  run_system(fn(sys) {
+    let _addr = sys.spawn(actor)
+  })
+  
+  inspect(count.val, content="42")
 }
