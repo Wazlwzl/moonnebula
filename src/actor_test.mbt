@@ -216,3 +216,39 @@ async test "scheduler delayed and interval messages" {
   inspect(delay_count.val, content="10")
   inspect(interval_count.val, content="2")
 }
+
+async test "router random load balancing" {
+  let count1 = Counter::{ val: 0 }
+  let count2 = Counter::{ val: 0 }
+  
+  let worker1 = Actor::new(
+    handle=fn(_ctx, _msg : Unit) {
+      count1.val += 1
+    }
+  )
+  
+  let worker2 = Actor::new(
+    handle=fn(_ctx, _msg : Unit) {
+      count2.val += 1
+    }
+  )
+  
+  run_system(async fn(sys) {
+    let w1 = sys.spawn(worker1)
+    let w2 = sys.spawn(worker2)
+    let router = sys.spawn(router_actor([w1, w2], Random))
+    
+    for i = 0; i < 10; i = i + 1 {
+      let _ = router.try_send(())
+    }
+    
+    @async.sleep(50)
+    
+    router.close()
+    w1.close()
+    w2.close()
+  })
+  
+  let both_received = count1.val > 0 && count2.val > 0
+  inspect(both_received, content="true")
+}
