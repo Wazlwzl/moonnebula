@@ -3,37 +3,53 @@ pub(all) enum SupervisionStrategy {
   OneForAll
 }
 
-pub struct Supervisor {
+pub(all) enum SupervisorMsg {
+  ChildCrashed(String)
+}
+
+pub struct ChildSpec {
+  id : String
+  spawn : (System, Addr[SupervisorMsg]) -> Unit
+}
+
+pub fn ChildSpec::new(id : String, spawn : (System, Addr[SupervisorMsg]) -> Unit) -> ChildSpec {
+  { id, spawn }
+}
+
+pub fn supervisor_actor(
+  system : System,
+  children : Array[ChildSpec],
   strategy : SupervisionStrategy
-}
-
-pub fn Supervisor::new(strategy : SupervisionStrategy) -> Supervisor {
-  { strategy, }
-}
-
-/// Supervises an actor and restarts it if it crashes (simulated for now).
-pub fn[Msg] Supervisor::supervise(_self : Supervisor, system : System, actor : Actor[Msg]) -> Addr[Msg] {
-  let queue : @aqueue.Queue[Msg] = @aqueue.Queue(kind=Unbounded)
-  let sender = Sender::new(queue)
-  let receiver = Receiver::new(queue)
-  let addr = Addr::new(sender)
-  
-  // Note: MoonNebula Supervisor MVP
-  // A fully fault-tolerant supervisor would trap task panics/errors here.
-  system.group.spawn_bg(
-    no_wait=true,
-    allow_failure=true,
-    async fn() {
-      let ctx = Context::new(addr)
-      (actor.started)(ctx)
-      while true {
-        let msg = receiver.recv()
-        (actor.handle)(ctx, msg)
+) -> Actor[SupervisorMsg] {
+  Actor::new(
+    started=fn(ctx) {
+      let self_addr = ctx.addr()
+      for child in children {
+        (child.spawn)(system, self_addr)
       }
-      // Unreachable without errors, but reserved for shutdown logic
-      (actor.stopped)(ctx)
     },
+    handle=fn(ctx, msg) {
+      match msg {
+        ChildCrashed(id) => {
+          match strategy {
+            OneForOne => {
+              for child in children {
+                if child.id == id {
+                  let self_addr = ctx.addr()
+                  (child.spawn)(system, self_addr)
+                  break
+                }
+              }
+            }
+            OneForAll => {
+              let self_addr = ctx.addr()
+              for child in children {
+                (child.spawn)(system, self_addr)
+              }
+            }
+          }
+        }
+      }
+    }
   )
-  
-  addr
 }
